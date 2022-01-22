@@ -8,5 +8,5 @@ This is a smol project to learn Rust.
 - You can also die
 
 ## TODO
-[] Add a better "dashboard" with points (length of the snake)
-[] Better grid ?
+- [ ] Add a better "dashboard" with points (length of the snake)
+- [ ] Better grid ?
