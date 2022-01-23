@@ -136,31 +136,24 @@ fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i
     const USAGE_TO_PLAY: &str = 
         "   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
     const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
-
+    
+    // Add on the grid the body of the snake
     for block in &player.body {
-        // let _x = block.x as usize;
-        let mut string = String::new();
-        for index in 0..grid_size {
-            if index == block.x {
-                string.push_str(player.symbole.as_str());
-            } else {
-                string.push_str(".");
-            }
-        }
-        grid[block.y as usize] = string;
+        let _x = block.x as usize;
+        grid[block.y as usize].replace_range(_x..=_x, player.symbole.as_str());
     }
 
+    // Remove the last tail (as it forwards)
     if let Some(b) = &player.popped_tail {
         let _x = b.x as usize;
         grid[b.y as usize].replace_range(_x..=_x, ".");
     }
 
+    // Add on the grid the object
     let _x = object.body.x as usize;
     grid[object.body.y as usize].replace_range(_x..=_x, object.symbole.as_str());
 
-    let tmp= grid.join("\n\r");
-
-    write!(stdout, "{}\n\r{}{}", tmp, USAGE_TO_PLAY, OTHERS_USAGE)
+    write!(stdout, "{}\n\r{}{}", grid.join("\n\r"), USAGE_TO_PLAY, OTHERS_USAGE)
         .expect("[draw_game] Failed to write to stdout\n\r");
 
 }
@@ -177,7 +170,7 @@ fn main() {
     
     // Use asynchronous stdin
     let mut stdin = termion::async_stdin().keys();
-    
+
     stdout.flush().unwrap();
     
     const GRID_SIZE:  i32 = 30;
