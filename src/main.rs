@@ -1,6 +1,3 @@
-// #![allow(unused_variables)]
-// #![allow(dead_code)]
-
 use std::io;
 use std::io::Stdout;
 use std::io::Write;
@@ -14,6 +11,23 @@ use termion;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
+
+
+const USAGE_TO_PLAY: &str = 
+"   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
+const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
+const GRID_SIZE:  i32 = 30;
+const DELTA_TIME: u64 = 200;
+const GAMEOVER: &str = "  ____                       ___\n\r / ___| __ _ _ __ ___   ___ / _ \\__   _____ _ __\n\r| |  _ / _` | '_ ` _ \\ / _ \\ | | \\ \\ / / _ \\ '__|\n\r| |_| | (_| | | | | | |  __/ |_| |\\ V /  __/ |\n\r \\____|\\__,_|_| |_| |_|\\___|\\___/  \\_/ \\___|_|\n\r";
+
+
+
+
+
+
+
+
+
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum PlayerDirection {
@@ -79,13 +93,13 @@ impl Player {
             if _x + b.x > self.grid_size - 1 {
                 _x = -b.x
             } else if _x + b.x < 0 {
-                _x = self.grid_size
+                _x = self.grid_size - 1
             }
 
             if _y + b.y > self.grid_size -1 {
                 _y = -b.y
             } else if _y + b.y < 0 {
-                _y = self.grid_size
+                _y = self.grid_size - 1
             }
             self.body.push_front(Block {
                 x: _x + b.x,
@@ -132,11 +146,11 @@ impl Object {
 }
 
 fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i32, player: &Player, object: &Object) {
-
-    const USAGE_TO_PLAY: &str = 
-        "   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
-    const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
     
+    // Add on the grid the object
+    let _x = object.body.x as usize;
+    grid[object.body.y as usize].replace_range(_x..=_x, object.symbole.as_str());
+
     // Add on the grid the body of the snake
     for block in &player.body {
         let _x = block.x as usize;
@@ -149,9 +163,6 @@ fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i
         grid[b.y as usize].replace_range(_x..=_x, ".");
     }
 
-    // Add on the grid the object
-    let _x = object.body.x as usize;
-    grid[object.body.y as usize].replace_range(_x..=_x, object.symbole.as_str());
 
     write!(stdout, "{}\n\r{}{}", grid.join("\n\r"), USAGE_TO_PLAY, OTHERS_USAGE)
         .expect("[draw_game] Failed to write to stdout\n\r");
@@ -173,9 +184,6 @@ fn main() {
 
     stdout.flush().unwrap();
     
-    const GRID_SIZE:  i32 = 30;
-    const DELTA_TIME: u64 = 200;
-    const GAMEOVER: &str = "  ____                       ___\n\r / ___| __ _ _ __ ___   ___ / _ \\__   _____ _ __\n\r| |  _ / _` | '_ ` _ \\ / _ \\ | | \\ \\ / / _ \\ '__|\n\r| |_| | (_| | | | | | |  __/ |_| |\\ V /  __/ |\n\r \\____|\\__,_|_| |_| |_|\\___|\\___/  \\_/ \\___|_|\n\r";
     let mut game_lose = false;
 
     // Create the player (snake)
@@ -221,7 +229,6 @@ fn main() {
         } else {
             player.direction = dir
         }
-
         
         if check_player_object(&player, &object_to_eat, &dir) {
             // He grow by the front so he go forward implicitly when eating
