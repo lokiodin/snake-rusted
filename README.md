@@ -10,4 +10,4 @@ This is a smol project to learn Rust.
 ## TODO
 - [ ] Add a better "dashboard" with points (length of the snake)
 - [ ] Better grid ?
-- [ ] Better display (no flickering with big (more than 15 cells) grid)
+- [x] Better display (no flickering with big (more than 15 cells) grid)
