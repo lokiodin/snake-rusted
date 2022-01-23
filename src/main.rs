@@ -44,6 +44,7 @@ struct Player {
     direction: PlayerDirection,
     body: LinkedList<Block>,
     symbole: String,
+    popped_tail: Option<Block>,
 }
 impl Player {
     fn new(grid_size: i32) -> Player {
@@ -58,6 +59,7 @@ impl Player {
             direction: PlayerDirection::Down,
             body: body,
             symbole: String::from("0"),
+            popped_tail: None,
         }
     }
 
@@ -91,7 +93,7 @@ impl Player {
             });
         }
         
-        self.body.pop_back();
+        self.popped_tail = self.body.pop_back();
     }
 
     fn grow(&mut self, object_body: &Block) {
@@ -129,31 +131,38 @@ impl Object {
     }
 }
 
-fn draw_game(stdout: &mut RawTerminal<Stdout>, grid_size: i32, player: &Player, object: &Object) {
+fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i32, player: &Player, object: &Object) {
 
     const USAGE_TO_PLAY: &str = 
         "   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
     const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
 
-
-    let mut grid_string = String::new();
-
-    for y in 0..grid_size{
-        for x in 0..grid_size {
-            if player.body.contains( &Block { x: x, y: y} ) {
-                grid_string.push_str(player.symbole.as_str());
-            } else if object.body.x == x && object.body.y == y {
-                grid_string.push_str(object.symbole.as_str());
+    for block in &player.body {
+        // let _x = block.x as usize;
+        let mut string = String::new();
+        for index in 0..grid_size {
+            if index == block.x {
+                string.push_str(player.symbole.as_str());
             } else {
-                grid_string.push_str(".");
+                string.push_str(".");
             }
         }
-        grid_string.push_str("\n\r");
-    };
-    
+        grid[block.y as usize] = string;
+    }
 
-    write!(stdout, "{}\n\r{}{}", grid_string, USAGE_TO_PLAY, OTHERS_USAGE)
+    if let Some(b) = &player.popped_tail {
+        let _x = b.x as usize;
+        grid[b.y as usize].replace_range(_x..=_x, ".");
+    }
+
+    let _x = object.body.x as usize;
+    grid[object.body.y as usize].replace_range(_x..=_x, object.symbole.as_str());
+
+    let tmp= grid.join("\n\r");
+
+    write!(stdout, "{}\n\r{}{}", tmp, USAGE_TO_PLAY, OTHERS_USAGE)
         .expect("[draw_game] Failed to write to stdout\n\r");
+
 }
 
 fn check_player_object(player: &Player, object_to_eat: &Object, _dir: &PlayerDirection) -> bool{
@@ -183,7 +192,14 @@ fn main() {
     let mut object_to_eat = Object::new(GRID_SIZE);
 
     let mut dir = PlayerDirection::Down;
-    
+
+    // Initialize the grid
+    const EMPTY_STRING: String = String::new();
+    let mut grid: [String; GRID_SIZE as usize] = [EMPTY_STRING; GRID_SIZE as usize];
+    for i in 0..grid.len() {
+        grid[i] = String::from(".".repeat(GRID_SIZE as usize));
+    }
+
     loop {
         let prev_dir = dir;
         
@@ -229,7 +245,7 @@ fn main() {
         
         
         // Drawing the game
-        draw_game(&mut stdout, GRID_SIZE, &player, &object_to_eat);
+        draw_game(&mut stdout, &mut grid, GRID_SIZE, &player, &object_to_eat);
 
         
         thread::sleep(time::Duration::from_millis(DELTA_TIME));
