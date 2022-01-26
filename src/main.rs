@@ -1,27 +1,28 @@
-use std::io;
-use std::io::Stdout;
+use std::{io, time::Duration};
 use std::io::Write;
-use std::collections::LinkedList;
-use std::thread;
-use std::time;
+
 
 use rand::Rng;
 
-use termion;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use termion::raw::RawTerminal;
+use crossterm::{
+    cursor::{self},
+    event::{read, poll, Event, KeyCode, KeyEvent},
+    terminal::{self, disable_raw_mode, enable_raw_mode},
+    ExecutableCommand, 
+    Result,
+    style::{self, Stylize}, QueueableCommand,
+};
 
 
 const USAGE_TO_PLAY: &str = 
 "   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
 const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
-const GRID_SIZE:  i32 = 20;
+const GRID_SIZE:  usize = 20;
 const DELTA_TIME: u64 = 200;
 const GAMEOVER: &str = "  ____                       ___\n\r / ___| __ _ _ __ ___   ___ / _ \\__   _____ _ __\n\r| |  _ / _` | '_ ` _ \\ / _ \\ | | \\ \\ / / _ \\ '__|\n\r| |_| | (_| | | | | | |  __/ |_| |\\ V /  __/ |\n\r \\____|\\__,_|_| |_| |_|\\___|\\___/  \\_/ \\___|_|\n\r";
 
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug)]
 enum PlayerDirection {
     Down,
     Up,
@@ -39,233 +40,184 @@ impl PlayerDirection {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-struct Block {
-    x: i32,
-    y: i32,
+struct Coordinate {
+    x: usize,
+    y: usize, // Do not forget to multiply by grid_size ...
 }
 
 struct Player {
-    grid_size: i32,
     direction: PlayerDirection,
-    body: LinkedList<Block>,
-    symbole: String,
-    popped_tail: Option<Block>,
+    body: Vec<Coordinate>
 }
 impl Player {
-    fn new(grid_size: i32) -> Player {
-        let mut body = LinkedList::new();
-        body.push_back(Block{
-            x: grid_size/2,
-            y: grid_size/2
-        });
+    fn new(game_size: usize) -> Player {
+        let range = 0+(game_size as f64 *0.20) as usize..(game_size as f64 *0.90) as usize;
 
-        Player {
-            grid_size: grid_size,
+        Player { 
             direction: PlayerDirection::Down,
-            body: body,
-            symbole: String::from("0"),
-            popped_tail: None,
+            body: vec![
+                Coordinate { 
+                    x: rand::thread_rng().gen_range(range.clone()),
+                    y: rand::thread_rng().gen_range(range)
+                }
+            ]
         }
     }
 
-    fn forward(&mut self, dir: &PlayerDirection) {
-        let mut _x = 0;
-        let mut _y = 0;
-        match dir {
-            PlayerDirection::Down   => _y += 1,
-            PlayerDirection::Up     => _y -= 1,
-            PlayerDirection::Left   => _x -= 1,
-            PlayerDirection::Right  => _x += 1,
-        }
+    fn eat(&mut self, x: usize, y: usize) {
+        self.body.push( Coordinate {
+            x: x,
+            y: y,
+        })
+    }
 
-        let _body = self.body.clone();
-        let _head = _body.front();
-        if let Some(b) = _head {
-            if _x + b.x > self.grid_size - 1 {
-                _x = -b.x
-            } else if _x + b.x < 0 {
-                _x = self.grid_size - 1
+    fn up(&mut self) {
+        unimplemented!()
+    }
+    
+    fn down(&mut self) {
+        unimplemented!()
+    }
+    
+    fn left(&mut self) {
+        unimplemented!()
+    }
+    
+    fn right(&mut self) {
+        unimplemented!()
+    }
+    
+    fn forward(&mut self) {
+        unimplemented!()
+    }
+}
+
+struct Food {
+    body: Coordinate
+}
+impl Food {
+    fn new(game_size: usize) -> Food {
+        let range = 0+(game_size as f64 *0.20) as usize..(game_size as f64 *0.90) as usize;
+
+        Food {
+            body: Coordinate { 
+                x: rand::thread_rng().gen_range(range.clone()),
+                y: rand::thread_rng().gen_range(range)
             }
+        }
+    }
+}
 
-            if _y + b.y > self.grid_size -1 {
-                _y = -b.y
-            } else if _y + b.y < 0 {
-                _y = self.grid_size - 1
+
+#[derive(Clone, Copy)]
+enum GameContent {
+    Empty,
+    Snake,
+    Food,
+
+}
+
+struct Screen {
+    size: usize,
+    buffer: Vec<GameContent>,
+}
+impl Screen {
+    fn new(size: usize) -> Screen {
+        Screen {
+            size: size,
+            buffer: vec![GameContent::Empty; size*size],
+        }
+    }
+    
+    fn get_content_at(&self, x: usize, y: usize) -> GameContent {
+        self.buffer[x + y * self.size]
+    }
+
+    fn set_content_at(&mut self, x: usize, y: usize, content_type: GameContent) {
+        self.buffer[x + y * self.size] = content_type;        
+    }
+
+    fn draw(&self, stdout: &mut std::io::Stdout) -> Result<()> {
+
+        for y in 0..self.size {
+            for x in 0..self.size {
+                let content = self.get_content_at(x, y);
+
+                let styled_content = match content {
+                    GameContent::Empty => style::PrintStyledContent( ".".white()),
+                    GameContent::Snake => style::PrintStyledContent( "O".white()),
+                    GameContent::Food => style::PrintStyledContent( "o".white())
+                };
+
+                stdout.queue(cursor::MoveTo(x as u16, y as u16))?
+                    .queue(styled_content)?;
             }
-            self.body.push_front(Block {
-                x: _x + b.x,
-                y: _y + b.y,
-            });
         }
-        
-        self.popped_tail = self.body.pop_back();
+
+        stdout.flush()
     }
 
-    fn grow(&mut self, object_body: &Block) {
-        self.body.push_front(object_body.clone());
-    }
-
-    fn get_direction(&self) -> PlayerDirection {
-        self.direction
-    }
-
-    fn get_size(&self) -> usize {
-        self.body.len()
-    }
-
-    fn check_eat_himself(&self) -> bool {
-        let mut _body = self.body.clone();
-        let mut _head = _body.front().unwrap().clone();
-        _body.split_off(1).contains(&mut _head)
-    }
-}
-
-struct Object {
-    body: Block,
-    symbole: String,
-}
-impl Object {
-    fn new(grid_size: i32) -> Object {
-        Object {
-            body: Block {
-                x: rand::thread_rng().gen_range(0..grid_size),
-                y: rand::thread_rng().gen_range(0..grid_size)
-            },
-            symbole: String::from("*")
+    fn update_buffer(&mut self, player: &Player, food: &Food) {
+        /* Update buffer with Player position */
+        for el in &player.body {
+            self.set_content_at(el.x, el.y, GameContent::Snake)
         }
+
+        /* Update buffer with Food position */
+        self.set_content_at(food.body.x, food.body.y, GameContent::Food)
+
     }
 }
 
-fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i32, player: &Player, object: &Object) {
+fn main() -> Result<()> {
     
-    // Add on the grid the object
-    let _x = object.body.x as usize;
-
-    // write!(stdout, "{}{}{}", termion::cursor::Goto(1, (object.body.y-1) as u16), object.symbole.as_str(), termion::cursor::Hide)
-    //     .expect("[draw_game] Failed to add object");
-
-    grid[object.body.y as usize].replace_range(_x..=_x, object.symbole.as_str());
-
-
-
-    // Add on the grid the body of the snake
-    for block in &player.body {
-        let _x = block.x as usize;
-        // write!(stdout, "{}{}{}", termion::cursor::Goto(block.x as u16, (block.y-1) as u16), player.symbole.as_str(), termion::cursor::Hide)
-        //     .expect("[draw_game] Failed to add block");
-
-        grid[block.y as usize].replace_range(_x..=_x, player.symbole.as_str());
-    }
-
-    // Remove the last tail (as it forwards)
-    if let Some(b) = &player.popped_tail {
-        let _x = b.x as usize;
-        // write!(stdout, "{}{}{}", termion::cursor::Goto(b.x as u16, (b.y-1) as u16), object.symbole.as_str(), termion::cursor::Hide)
-        //     .expect("[draw_game] Failed to remove tail");
-
-        grid[b.y as usize].replace_range(_x..=_x, ".");
-    }
-
-
-    write!(stdout, "{}\n\r{}{}", grid.join("\n\r"), USAGE_TO_PLAY, OTHERS_USAGE)
-        .expect("[draw_game] Failed to write to stdout\n\r");
-
-}
-
-fn check_player_object(player: &Player, object_to_eat: &Object, _dir: &PlayerDirection) -> bool{
-    &object_to_eat.body == player.body.front().unwrap()
-}
-
-fn main() {
+    /* Configuring the terminal into raw mode and hiding the cursor */ 
+    let mut stdout = io::stdout();
+    enable_raw_mode()?;
+    stdout.execute(cursor::Hide)?;
+    stdout.execute(terminal::Clear(terminal::ClearType::All))?;
+    stdout.queue(cursor::MoveTo(0, 0))?;
+    stdout.flush()?;
     
-    /* Configuring the terminal */ 
-    // Stdout in raw mode
-    let mut stdout = io::stdout().into_raw_mode().unwrap();
-    
-    // Use asynchronous stdin
-    let mut stdin = termion::async_stdin().keys();
+    let mut stdin = io::stdin();
 
-    stdout.flush().unwrap();
-    
-    let mut game_lose = false;
+    /* Instance the screen */
+    let mut screen = Screen::new(GRID_SIZE);
 
-    // Create the player (snake)
+
+    /* Instance the player */
     let mut player = Player::new(GRID_SIZE);
 
-    // Instanciate a new Object to eat
-    let mut object_to_eat = Object::new(GRID_SIZE);
+    /* Instance the food */
+    let mut food = Food::new(GRID_SIZE);
 
-    let mut dir = PlayerDirection::Down;
+    screen.update_buffer(&player, &food);
 
-    // Initialize the grid
-    const EMPTY_STRING: String = String::new();
-    let mut grid: [String; GRID_SIZE as usize] = [EMPTY_STRING; GRID_SIZE as usize];
-    for i in 0..grid.len() {
-        grid[i] = String::from(".".repeat(GRID_SIZE as usize));
-    }
+    screen.draw(&mut stdout)?;
 
-    write!(stdout, "{}{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), termion::cursor::Hide, grid.join("\n\r"))
-        .expect("[main] Failed to clear screen");
+    'game_loop:  loop {
 
-    loop {
-        let prev_dir = dir;
-        
-        // Getting the input from the player
-        let input = stdin.next();
+        if poll(Duration::from_millis(500))? {
 
-        if let Some(Ok(key)) = input {
-            dir = match key {
-                    // Exit if 'a' or ctr+c is pressed
-                    termion::event::Key::Char('a')  => break,
-                    termion::event::Key::Ctrl('c')  => break,
-                    termion::event::Key::Char('s')  => PlayerDirection::Down,
-                    termion::event::Key::Down       => PlayerDirection::Down,
-                    termion::event::Key::Char('z')  => PlayerDirection::Up,
-                    termion::event::Key::Up         => PlayerDirection::Up,
-                    termion::event::Key::Char('q')  => PlayerDirection::Left,
-                    termion::event::Key::Left       => PlayerDirection::Left,
-                    termion::event::Key::Char('d')  => PlayerDirection::Right,
-                    termion::event::Key::Right      => PlayerDirection::Right,
-                    _ => dir
-            };
-        }
+            let event = read()?;
 
-        if dir == player.get_direction().opposite() && player.get_size() > 1 {
-            dir = prev_dir;
-        } else {
-            player.direction = dir
-        }
-        
-        if check_player_object(&player, &object_to_eat, &dir) {
-            // He grow by the front so he go forward implicitly when eating
-            player.grow(&object_to_eat.body);
-            object_to_eat = Object::new(GRID_SIZE);
-        } else {
-            player.forward(&dir);
-            if player.check_eat_himself() {
-                eprintln!("Eated himself !");
-                game_lose = true;
-                break;
+            if event == Event::Key(KeyCode::Esc.into()) {
+                break 'game_loop
+            } else if event == Event::Key(KeyCode::Char('z').into()) {
+                player.up();
+            } else if event == Event::Key(KeyCode::Char('s').into()) {
+                player.down();
+            } else if event == Event::Key(KeyCode::Char('q').into()) {
+                player.left();
+            } else if event == Event::Key(KeyCode::Char('d').into()) {
+                player.right();
             }
         }
-        
 
-        // Drawing the game
-        draw_game(&mut stdout, &mut grid, GRID_SIZE, &player, &object_to_eat);
+        player.forward();
 
-        thread::sleep(time::Duration::from_millis(DELTA_TIME));
 
-        write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), termion::cursor::Hide)
-            .expect("[main] Failed to clear screen");
     }
-
-
-    if game_lose {
-        writeln!(stdout, "{}", GAMEOVER)
-            .expect("[main] Failed to write to stdout\n\r");
-    }
-
-
+    disable_raw_mode()
 }
 
