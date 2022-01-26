@@ -16,17 +16,9 @@ use termion::raw::RawTerminal;
 const USAGE_TO_PLAY: &str = 
 "   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
 const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
-const GRID_SIZE:  i32 = 30;
+const GRID_SIZE:  i32 = 20;
 const DELTA_TIME: u64 = 200;
 const GAMEOVER: &str = "  ____                       ___\n\r / ___| __ _ _ __ ___   ___ / _ \\__   _____ _ __\n\r| |  _ / _` | '_ ` _ \\ / _ \\ | | \\ \\ / / _ \\ '__|\n\r| |_| | (_| | | | | | |  __/ |_| |\\ V /  __/ |\n\r \\____|\\__,_|_| |_| |_|\\___|\\___/  \\_/ \\___|_|\n\r";
-
-
-
-
-
-
-
-
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -149,17 +141,29 @@ fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i
     
     // Add on the grid the object
     let _x = object.body.x as usize;
+
+    // write!(stdout, "{}{}{}", termion::cursor::Goto(1, (object.body.y-1) as u16), object.symbole.as_str(), termion::cursor::Hide)
+    //     .expect("[draw_game] Failed to add object");
+
     grid[object.body.y as usize].replace_range(_x..=_x, object.symbole.as_str());
+
+
 
     // Add on the grid the body of the snake
     for block in &player.body {
         let _x = block.x as usize;
+        // write!(stdout, "{}{}{}", termion::cursor::Goto(block.x as u16, (block.y-1) as u16), player.symbole.as_str(), termion::cursor::Hide)
+        //     .expect("[draw_game] Failed to add block");
+
         grid[block.y as usize].replace_range(_x..=_x, player.symbole.as_str());
     }
 
     // Remove the last tail (as it forwards)
     if let Some(b) = &player.popped_tail {
         let _x = b.x as usize;
+        // write!(stdout, "{}{}{}", termion::cursor::Goto(b.x as u16, (b.y-1) as u16), object.symbole.as_str(), termion::cursor::Hide)
+        //     .expect("[draw_game] Failed to remove tail");
+
         grid[b.y as usize].replace_range(_x..=_x, ".");
     }
 
@@ -200,6 +204,9 @@ fn main() {
     for i in 0..grid.len() {
         grid[i] = String::from(".".repeat(GRID_SIZE as usize));
     }
+
+    write!(stdout, "{}{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), termion::cursor::Hide, grid.join("\n\r"))
+        .expect("[main] Failed to clear screen");
 
     loop {
         let prev_dir = dir;
@@ -243,11 +250,10 @@ fn main() {
             }
         }
         
-        
+
         // Drawing the game
         draw_game(&mut stdout, &mut grid, GRID_SIZE, &player, &object_to_eat);
 
-        
         thread::sleep(time::Duration::from_millis(DELTA_TIME));
 
         write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), termion::cursor::Hide)
