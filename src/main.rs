@@ -212,6 +212,7 @@ fn main() {
                     // Exit if 'a' or ctr+c is pressed
                     termion::event::Key::Char('a')  => break,
                     termion::event::Key::Ctrl('c')  => break,
+                    termion::event::Key::Esc        => break,
                     termion::event::Key::Char('s')  => PlayerDirection::Down,
                     termion::event::Key::Down       => PlayerDirection::Down,
                     termion::event::Key::Char('z')  => PlayerDirection::Up,
