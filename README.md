@@ -8,6 +8,7 @@ This is a smol project to learn Rust.
 - You can also die
 
 ## TODO
-- [ ] Add a better "dashboard" with points (length of the snake)
-- [ ] Better grid ?
+- [x] Add a better "dashboard" with points (length of the snake)
 - [x] Better display (no flickering with big (more than 15 cells) grid)
+- [ ] Better grid ?
+- [ ] Adding score
