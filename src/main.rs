@@ -47,6 +47,7 @@ struct Block {
     y: i32,
 }
 
+/* Player/Snake. */
 struct Player {
     grid_size: i32,
     direction: PlayerDirection,
@@ -123,6 +124,7 @@ impl Player {
     }
 }
 
+/* Object.*/
 struct Object {
     body: Block,
     symbole: String,
@@ -139,7 +141,8 @@ impl Object {
     }
 }
 
-fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], grid_size: i32, player: &Player, object: &Object) {
+/* Draw the grid on stdout with player and object position. */
+fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], player: &Player, object: &Object) {
     
     // Add on the grid the object
     let _x = object.body.x as usize;
@@ -248,7 +251,7 @@ fn main() {
     let mut stdout = io::stdout().into_raw_mode().unwrap();
     stdout.flush().unwrap();
     
-    /* Dealing with initialize for input from player */
+    /* Dealing with initializing input from player */
     let event_queue = KeyEventQueue::new();
     let thread_event_queue = event_queue.clone();
     // launch seperate thread to deal with keyboard input
@@ -263,7 +266,6 @@ fn main() {
     // Instanciate a new Object to eat
     let mut object_to_eat = Object::new(GRID_SIZE);
 
-
     let mut dir = PlayerDirection::Down;
 
     // Initialize the grid
@@ -274,6 +276,7 @@ fn main() {
     }
 
 
+    /* Time variables to have a constant time between each frame. */
     let mut game_loop_begin = std::time::SystemTime::now();
     let mut game_loop_end = std::time::SystemTime::now();
     let horizontal_target_cycle_time = time::Duration::from_secs_f64(1.0 / FPS);
@@ -340,12 +343,11 @@ fn main() {
                     .expect("No time ...");
             }
             Err(e) => {
-                // an error occurred!
-                println!("Error: {:?}", e);
+                eprintln!("Error: {:?}", e);
             }
         }
         // Drawing the game
-        draw_game(&mut stdout, &mut grid, GRID_SIZE, &player, &object_to_eat);
+        draw_game(&mut stdout, &mut grid, &player, &object_to_eat);
 
         write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), termion::cursor::Hide)
             .expect("[main] Failed to clear screen");
