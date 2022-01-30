@@ -17,8 +17,8 @@ use termion::raw::RawTerminal;
 const USAGE_TO_PLAY: &str = 
 "   Key  |  Action\n\r--------|--------\n\r    z   |   Up   \n\r    s   |   Down \n\r    q   |   Left \n\r    d   |   Right\n\r";
 const OTHERS_USAGE: &str = "    a   |   Quit \n\r ctrl+c |   Quit \n\r";
-const GRID_SIZE:  i32 = 30;
-const FPS: f64 = 8.0;
+const GRID_SIZE:  i32 = 20;
+const FPS: f64 = 7.0;
 const GAMEOVER: &str = "  ____                       ___\n\r / ___| __ _ _ __ ___   ___ / _ \\__   _____ _ __\n\r| |  _ / _` | '_ ` _ \\ / _ \\ | | \\ \\ / / _ \\ '__|\n\r| |_| | (_| | | | | | |  __/ |_| |\\ V /  __/ |\n\r \\____|\\__,_|_| |_| |_|\\___|\\___/  \\_/ \\___|_|\n\r";
 
 
@@ -161,7 +161,7 @@ fn draw_game(stdout: &mut RawTerminal<Stdout>, grid: &mut [String], player: &Pla
     }
 
 
-    write!(stdout, "{}\n\r{}{}", grid.join("\n\r"), USAGE_TO_PLAY, OTHERS_USAGE)
+    write!(stdout, "{}\n\r{}{}", grid.join("\n\r"),  USAGE_TO_PLAY, OTHERS_USAGE)
         .expect("[draw_game] Failed to write to stdout\n\r");
 
 }
@@ -330,22 +330,12 @@ fn main() {
         } else {
             player.forward(&dir);
             if player.check_eat_himself() {
-                eprintln!("Eated himself !");
                 game_lose = true;
                 break;
             }
         }
         
 
-        match time_elapsed_from_the_begining.elapsed() {
-            Ok(elapsed) => {
-                write!(stdout, "Time elapsed: {}\n\r", elapsed.as_secs())
-                    .expect("No time ...");
-            }
-            Err(e) => {
-                eprintln!("Error: {:?}", e);
-            }
-        }
         // Drawing the game
         draw_game(&mut stdout, &mut grid, &player, &object_to_eat);
 
@@ -359,8 +349,9 @@ fn main() {
     if game_lose {
         writeln!(stdout, "{}", GAMEOVER)
             .expect("[main] Failed to write to stdout\n\r");
+
+        writeln!(stdout, "You scored: {} in {} seconds", player.body.len(), time_elapsed_from_the_begining.elapsed().unwrap().as_secs())
+            .expect("[main] Failed to write on stdout. No score displayed.");
     }
-
-
 }
 
